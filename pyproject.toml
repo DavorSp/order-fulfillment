@@ -12,7 +12,7 @@ dev = [
     "ruff>=0.16.3",
 ]
 [tool.uv.workspace]
-members = ["services/*"]
+members = ["services/*", "packages/*"]
 
 [tool.ruff]
 line-length = 100

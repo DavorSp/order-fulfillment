@@ -1,0 +1,27 @@
+# Claude context (personal, keep local)
+CLAUDE.md
+CLAUDE.local.md
+
+# Secrets — never commit these
+.env
+.env.*
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Docker / local data volumes
+*.log

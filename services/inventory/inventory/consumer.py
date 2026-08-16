@@ -9,18 +9,24 @@ DB_URL = "postgresql://inventory:inventory@localhost:5432/inventory"
 QUEUE_NAME = "reserve_stock"
 
 async def handle(envelope: Envelope) -> None:
-    # 1. get requested sku and qty from envelope.payload
-    sku= envelope.payload.get("sku")
+    sku = envelope.payload.get("sku")
     qty = envelope.payload.get("qty")
-    # 2. connect to the DB, fetchval the current quantity for that sku
     async with asyncpg.create_pool(dsn=DB_URL) as pool:
         async with pool.acquire() as connection:
             current_quantity = await connection.fetchval(
                 "SELECT quantity FROM stock WHERE sku = $1", sku
             )
-    # 3. print: requested X of <sku>, have Y in stock
-    print(f"Requested {qty} of {sku}, have {current_quantity} in stock")
-
+            if current_quantity is None:
+                print(f"No such SKU: {sku}")
+                return
+            if current_quantity >= qty:
+                new_quantity = current_quantity - qty
+                await connection.execute(
+                    "UPDATE stock SET quantity = $1 WHERE sku = $2", new_quantity, sku
+                )
+                print(f"Reserved {qty} of {sku}, new quantity is {new_quantity}")
+            else:
+                print(f"Not enough stock for {sku}. Requested {qty}, available {current_quantity}")
 
 async def main() -> None:
     connection = await aio_pika.connect_robust(AMQP_URL)

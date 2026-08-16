@@ -3,6 +3,7 @@ import asyncio
 import aio_pika
 import asyncpg
 from eventing import Envelope
+from inventory.broker import Broker
 
 AMQP_URL = "amqp://guest:guest@localhost/"
 DB_URL = "postgresql://inventory:inventory@localhost:5432/inventory"
@@ -27,28 +28,28 @@ class StockRepository:
                 return result == "UPDATE 1"
 
 
-# CHANGE 2: handle now receives the pool as an argument
-async def handle(repo: StockRepository, envelope: Envelope) -> None:
+async def handle(repo: StockRepository, broker: Broker, envelope: Envelope) -> None:
+    order_id = envelope.payload.get("order_id")
     sku = envelope.payload.get("sku")
     qty = envelope.payload.get("qty")
     reserved = await repo.reserve(sku, qty)
-    if reserved:
-        print(f"Reserved {qty} of {sku}")
-    else:
-        print(f"Could not reserve {qty} of {sku} (not enough stock or no such SKU)")
+    reply_type = "StockReserved" if reserved else "StockFailed"
+    await broker.publish_reply(reply_type, order_id, sku, qty)
+    print(f"{reply_type} for order {order_id}")
 
 async def main() -> None:
     pool = await asyncpg.create_pool(dsn=DB_URL)
-    repo = StockRepository(pool)          # <-- create the repository from the pool
+    repo = StockRepository(pool)
     connection = await aio_pika.connect_robust(AMQP_URL)
     async with connection:
         channel = await connection.channel()
+        broker = Broker(channel)                      # <-- create broker
         queue = await channel.declare_queue(QUEUE_NAME, durable=True)
+        await channel.declare_queue("stock_replies", durable=True)   # <-- reply mailbox exists
         async with queue.iterator() as messages:
             async for message in messages:
                 async with message.process():
                     envelope = Envelope.from_bytes(message.body)
-                    await handle(repo, envelope)   # <-- pass repo, not pool
-
+                    await handle(repo, broker, envelope)   # <-- inject broker
 if __name__ == "__main__":
     asyncio.run(main())

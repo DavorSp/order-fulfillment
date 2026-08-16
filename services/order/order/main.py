@@ -1,43 +1,36 @@
-"""Step 1: prove the infrastructure works.
-
-Publish one ReserveStock message to a queue, then consume it and print it.
-One service, one message, one round trip. If this runs, RabbitMQ is reachable
-and the envelope survives the trip. Everything else in the project is a
-variation on this.
-"""
-
-from __future__ import annotations
-
 import asyncio
-import os
 
 import aio_pika
 from eventing import Envelope
+from order.broker import Broker
 
-AMQP_URL = os.environ.get("AMQP_URL", "amqp://guest:guest@localhost/")
-QUEUE_NAME = "reserve_stock"
+AMQP_URL = "amqp://guest:guest@localhost/"
+REPLY_QUEUE = "stock_replies"
 
 
-async def publish(channel: aio_pika.abc.AbstractChannel) -> None:
-    envelope = Envelope(
-        type="ReserveStock",
-        payload={"order_id": "order-123", "sku": "WIDGET-1", "qty": 2},
-    )
-    await channel.default_exchange.publish(
-        aio_pika.Message(body=envelope.to_bytes(), message_id=envelope.message_id),
-        routing_key=QUEUE_NAME,
-    )
-    print(f"[publish] sent {envelope.type} id={envelope.message_id}")
+async def handle_reply(envelope: Envelope) -> None:
+    reply_type = envelope.type
+    order_id = envelope.payload.get("order_id")
+    if reply_type == "StockReserved":
+        print(f"Order {order_id}: stock reserved — would proceed to payment")
+    else:
+        print(f"Order {order_id}: stock failed — order cannot proceed")
 
 
 async def main() -> None:
     connection = await aio_pika.connect_robust(AMQP_URL)
     async with connection:
         channel = await connection.channel()
-        await channel.declare_queue(QUEUE_NAME, durable=True)
-        await publish(channel)
-        print("[done] published ReserveStock")
+        broker = Broker(channel)
+        queue = await channel.declare_queue(REPLY_QUEUE, durable=True)
 
+        await broker.publish_reserve_stock("order-123", "WIDGET-1", 2)
+
+        async with queue.iterator() as messages:
+            async for message in messages:
+                async with message.process():
+                    envelope = Envelope.from_bytes(message.body)
+                    await handle_reply(envelope)
 
 if __name__ == "__main__":
     asyncio.run(main())

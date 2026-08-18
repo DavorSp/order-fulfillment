@@ -9,5 +9,6 @@ class PaymentRepository:
         async with self.pool.acquire() as conn:
             await conn.execute(
                 "INSERT INTO payments (order_id, status) VALUES ($1, $2)",
-                order_id, "charged",
+                order_id,
+                "charged",
             )

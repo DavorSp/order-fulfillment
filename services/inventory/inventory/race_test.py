@@ -6,7 +6,7 @@ they oversell: more get 'reserved' than actually existed.
 """
 
 import asyncio
-from unittest import result
+
 import asyncpg
 
 DB_URL = "postgresql://inventory:inventory@localhost:5432/inventory"
@@ -16,7 +16,8 @@ async def naive_reserve(pool: asyncpg.Pool, sku: str, qty: int, worker: int) -> 
     async with pool.acquire() as conn:
         result = await conn.execute(
             "UPDATE stock SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1",
-            qty, sku,
+            qty,
+            sku,
         )
         if result == "UPDATE 1":
             print(f"worker {worker}: reserved {qty}")

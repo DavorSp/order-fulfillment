@@ -9,13 +9,11 @@ class Broker:
         self.channel = channel
 
     # Publish a reply message onto the given queue.
-    async def publish_reply(
-        self, reply_type: str, order_id: str, sku: str, qty: int
-    ) -> None:
+    async def publish_reply(self, reply_type: str, order_id: str, sku: str, qty: int) -> None:
         # 1. build an Envelope: type=reply_type, payload carries order_id/sku/qty
         envelope = Envelope(type=reply_type, payload={"order_id": order_id, "sku": sku, "qty": qty})
         # 2. publish it to the "stock_replies" queue via self.channel
         await self.channel.default_exchange.publish(
-            aio_pika.Message(body=envelope.to_bytes(),message_id=envelope.message_id),
-            routing_key="stock_replies",
+            aio_pika.Message(body=envelope.to_bytes(), message_id=envelope.message_id),
+            routing_key="order_replies",
         )

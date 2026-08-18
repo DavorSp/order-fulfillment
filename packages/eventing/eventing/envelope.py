@@ -15,7 +15,7 @@ class Envelope:
     """
 
     type: str
-    payload: dict
+    payload: dict[str, str | int]
     message_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 

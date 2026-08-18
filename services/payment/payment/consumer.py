@@ -3,6 +3,7 @@ import asyncio
 import aio_pika
 import asyncpg
 from eventing import Envelope
+
 from payment.broker import Broker
 from payment.repository import PaymentRepository
 
@@ -12,7 +13,8 @@ QUEUE_NAME = "charge_payment"
 
 
 async def handle(repo: PaymentRepository, broker: Broker, envelope: Envelope) -> None:
-    order_id = envelope.payload.get("order_id")
+    order_id = envelope.payload["order_id"]
+    assert isinstance(order_id, str)
     # fail rule: the magic test order fails; everything else charges
     if order_id == "order-fail":
         await broker.publish_reply("PaymentFailed", order_id)

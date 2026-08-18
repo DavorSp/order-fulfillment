@@ -2,6 +2,7 @@ import aio_pika
 from eventing import Envelope
 
 RESERVE_STOCK_QUEUE = "reserve_stock"
+CHARGE_PAYMENT_QUEUE = "charge_payment"
 
 
 class Broker:
@@ -9,10 +10,21 @@ class Broker:
         self.channel = channel
 
     async def publish_reserve_stock(self, order_id: str, sku: str, qty: int) -> None:
-        # build a ReserveStock envelope (payload carries order_id, sku, qty)
-        envelope= Envelope(type="ReserveStock", payload={"order_id": order_id, "sku": sku, "qty": qty})
-        # and publish it to the reserve_stock queue via self.channel
+        envelope = Envelope(
+            type="ReserveStock",
+            payload={"order_id": order_id, "sku": sku, "qty": qty},
+        )
         await self.channel.default_exchange.publish(
-            aio_pika.Message(body=envelope.to_bytes(),message_id=envelope.message_id),
+            aio_pika.Message(body=envelope.to_bytes(), message_id=envelope.message_id),
             routing_key=RESERVE_STOCK_QUEUE,
+        )
+
+    async def publish_charge_payment(self, order_id: str, sku: str, qty: int) -> None:
+        envelope = Envelope(
+            type="ChargePayment",
+            payload={"order_id": order_id, "sku": sku, "qty": qty},
+        )
+        await self.channel.default_exchange.publish(
+            aio_pika.Message(body=envelope.to_bytes(), message_id=envelope.message_id),
+            routing_key=CHARGE_PAYMENT_QUEUE,
         )

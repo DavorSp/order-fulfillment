@@ -2,7 +2,7 @@
 name = "payment-service"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["asyncpg>=0.30.0", "aio-pika>=9.4.0", "eventing"]
+dependencies = ["asyncpg>=0.30.0", "aio-pika>=9.4.0", "eventing", "redis>=5.0.0"]
 
 [tool.uv.sources]
 eventing = { workspace = true }

@@ -3,6 +3,8 @@ import asyncio
 import aio_pika
 import asyncpg
 from eventing import Envelope
+from eventing.idempotency import Idempotency
+from redis.asyncio import Redis
 
 from payment.broker import Broker
 from payment.repository import PaymentRepository
@@ -10,6 +12,7 @@ from payment.repository import PaymentRepository
 AMQP_URL = "amqp://guest:guest@localhost/"
 DB_URL = "postgresql://payment:payment@localhost:5433/payment"
 QUEUE_NAME = "charge_payment"
+REDIS_URL = "redis://localhost:6379"
 
 
 async def handle(repo: PaymentRepository, broker: Broker, envelope: Envelope) -> None:
@@ -26,6 +29,8 @@ async def handle(repo: PaymentRepository, broker: Broker, envelope: Envelope) ->
 
 
 async def main() -> None:
+    redis = Redis.from_url(REDIS_URL)
+    idempotency = Idempotency(redis)
     pool = await asyncpg.create_pool(dsn=DB_URL)
     repo = PaymentRepository(pool)
     connection = await aio_pika.connect_robust(AMQP_URL)
@@ -37,6 +42,9 @@ async def main() -> None:
             async for message in messages:
                 async with message.process():
                     envelope = Envelope.from_bytes(message.body)
+                    if not await idempotency.is_new(envelope.message_id):
+                        print(f"Skipping duplicate {envelope.message_id}")
+                        continue
                     await handle(repo, broker, envelope)
 
 

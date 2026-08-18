@@ -14,6 +14,8 @@ order_id = sys.argv[1] if len(sys.argv) > 1 else "order-123"
 async def handle_reply(broker: Broker, envelope: Envelope) -> None:
     reply_type = envelope.type
     order_id = envelope.payload["order_id"]
+    sku = envelope.payload["sku"]
+    qty = envelope.payload["qty"]
     assert isinstance(order_id, str)
 
     if reply_type == "StockReserved":
@@ -34,9 +36,8 @@ async def handle_reply(broker: Broker, envelope: Envelope) -> None:
         print(f"Order {order_id}: payment charged, ORDER CONFIRMED")
 
     elif reply_type == "PaymentFailed":
-        # payment failed AFTER stock was reserved — stock is now stuck.
-        # TODO: compensation — release the reserved stock (next major step)
-        print(f"Order {order_id}: payment failed, order cannot proceed (stock needs releasing!)")
+        print(f"Order {order_id}: payment failed, releasing stock")
+        await broker.publish_release_stock(order_id, sku, qty)
 
     else:
         print(f"Order {order_id}: unknown reply type {reply_type}")

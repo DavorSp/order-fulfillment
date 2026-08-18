@@ -27,18 +27,29 @@ class StockRepository:
             )
             return bool(result == "UPDATE 1")
 
+    async def release(self, sku: str, qty: int) -> None:
+        async with self.pool.acquire() as connection:
+            await connection.execute(
+                "UPDATE stock SET quantity = quantity + $1 WHERE sku = $2",
+                qty,
+                sku,
+            )
+
 
 async def handle(repo: StockRepository, broker: Broker, envelope: Envelope) -> None:
     order_id = envelope.payload["order_id"]
     sku = envelope.payload["sku"]
     qty = envelope.payload["qty"]
-    assert isinstance(order_id, str)
-    assert isinstance(sku, str)
-    assert isinstance(qty, int)
-    reserved = await repo.reserve(sku, qty)
-    reply_type = "StockReserved" if reserved else "StockFailed"
-    await broker.publish_reply(reply_type, order_id, sku, qty)
-    print(f"{reply_type} for order {order_id}")
+
+    if envelope.type == "ReserveStock":
+        reserved = await repo.reserve(sku, qty)
+        reply_type = "StockReserved" if reserved else "StockFailed"
+        await broker.publish_reply(reply_type, order_id, sku, qty)
+        print(f"{reply_type} for order {order_id}")
+
+    elif envelope.type == "ReleaseStock":
+        await repo.release(sku, qty)
+        print(f"Released {qty} of {sku} for order {order_id}")
 
 
 async def main() -> None:

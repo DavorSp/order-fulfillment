@@ -28,3 +28,13 @@ class Broker:
             aio_pika.Message(body=envelope.to_bytes(), message_id=envelope.message_id),
             routing_key=CHARGE_PAYMENT_QUEUE,
         )
+
+    async def publish_release_stock(self, order_id: str, sku: str, qty: int) -> None:
+        envelope = Envelope(
+            type="ReleaseStock",
+            payload={"order_id": order_id, "sku": sku, "qty": qty},
+        )
+        await self.channel.default_exchange.publish(
+            aio_pika.Message(body=envelope.to_bytes(), message_id=envelope.message_id),
+            routing_key=RESERVE_STOCK_QUEUE,
+        )

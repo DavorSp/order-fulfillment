@@ -13,15 +13,15 @@ QUEUE_NAME = "charge_payment"
 
 
 async def handle(repo: PaymentRepository, broker: Broker, envelope: Envelope) -> None:
-    order_id = envelope.payload["order_id"]
-    assert isinstance(order_id, str)
-    # fail rule: the magic test order fails; everything else charges
+    order_id = envelope.payload.get("order_id")
+    sku = envelope.payload.get("sku")
+    qty = envelope.payload.get("qty")
     if order_id == "order-fail":
-        await broker.publish_reply("PaymentFailed", order_id)
+        await broker.publish_reply("PaymentFailed", order_id, sku, qty)
         print(f"Payment FAILED for {order_id}")
     else:
         await repo.charge(order_id)
-        await broker.publish_reply("PaymentCharged", order_id)
+        await broker.publish_reply("PaymentCharged", order_id, sku, qty)
         print(f"Payment CHARGED for {order_id}")
 
 

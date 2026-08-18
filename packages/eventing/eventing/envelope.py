@@ -4,18 +4,19 @@ import json
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
+from typing import TypedDict
+
+
+class OrderPayload(TypedDict):
+    order_id: str
+    sku: str
+    qty: int
 
 
 @dataclass(slots=True)
 class Envelope:
-    """What every message looks like on the wire.
-
-    message_id is the idempotency key — a consumer uses it to answer
-    'have I already processed this?' before acting.
-    """
-
     type: str
-    payload: dict[str, str | int]
+    payload: OrderPayload  # <-- was dict[str, str | int]
     message_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 

@@ -143,17 +143,3 @@ uv run pre-commit run --all-files   # everything above, as pre-commit runs it
 
 `pre-commit install` wires these into `git commit` automatically (see
 [.pre-commit-config.yaml](.pre-commit-config.yaml)).
-
-## Current gaps
-
-Being upfront about what's not done, since this is a learning project in
-progress:
-- **No `notification` service yet** — the 4th planned service.
-- **No automated test suite** — `race_test.py`, `test_publish.py`, and
-  `test_duplicate.py` are manual demo scripts you run by hand to observe
-  behavior (a race condition, idempotent dedup), not pytest assertions.
-- **`order` has no persisted saga state and isn't idempotent yet** — it's a
-  single-shot CLI script per order, and unlike `inventory`/`payment` it
-  doesn't dedup its reply queue against Redis.
-- **`inventory/db.py`** is a leftover ad hoc script, not part of the running
-  service.

@@ -16,28 +16,23 @@ async def handle_reply(broker: Broker, envelope: Envelope) -> None:
     order_id = envelope.payload["order_id"]
     sku = envelope.payload["sku"]
     qty = envelope.payload["qty"]
-    assert isinstance(order_id, str)
 
     if reply_type == "StockReserved":
-        sku = envelope.payload["sku"]
-        qty = envelope.payload["qty"]
-        assert isinstance(sku, str)
-        assert isinstance(qty, int)
-        # stock is secured — proceed to charge payment
         print(f"Order {order_id}: stock reserved, charging payment")
         await broker.publish_charge_payment(order_id, sku, qty)
 
     elif reply_type == "StockFailed":
-        # nothing was reserved, order simply can't proceed
         print(f"Order {order_id}: stock failed, order cannot proceed")
+        await broker.publish_notification("OrderFailed", order_id, sku, qty)
 
     elif reply_type == "PaymentCharged":
-        # happy path complete
         print(f"Order {order_id}: payment charged, ORDER CONFIRMED")
+        await broker.publish_notification("OrderConfirmed", order_id, sku, qty)
 
     elif reply_type == "PaymentFailed":
         print(f"Order {order_id}: payment failed, releasing stock")
         await broker.publish_release_stock(order_id, sku, qty)
+        await broker.publish_notification("OrderFailed", order_id, sku, qty)
 
     else:
         print(f"Order {order_id}: unknown reply type {reply_type}")

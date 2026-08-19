@@ -3,6 +3,7 @@ from eventing import Envelope
 
 RESERVE_STOCK_QUEUE = "reserve_stock"
 CHARGE_PAYMENT_QUEUE = "charge_payment"
+NOTIFICATION_QUEUE = "notifications"
 
 
 class Broker:
@@ -37,4 +38,16 @@ class Broker:
         await self.channel.default_exchange.publish(
             aio_pika.Message(body=envelope.to_bytes(), message_id=envelope.message_id),
             routing_key=RESERVE_STOCK_QUEUE,
+        )
+
+    async def publish_notification(
+        self, outcome_type: str, order_id: str, sku: str, qty: int
+    ) -> None:
+        envelope = Envelope(
+            type=outcome_type,  # "OrderConfirmed" or "OrderFailed"
+            payload={"order_id": order_id, "sku": sku, "qty": qty},
+        )
+        await self.channel.default_exchange.publish(
+            aio_pika.Message(body=envelope.to_bytes(), message_id=envelope.message_id),
+            routing_key=NOTIFICATION_QUEUE,
         )

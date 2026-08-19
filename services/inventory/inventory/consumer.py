@@ -2,37 +2,15 @@ import asyncio
 
 import aio_pika
 import asyncpg
-from eventing import Envelope, Idempotency
+from eventing import Envelope, Idempotency, constants
 from redis.asyncio import Redis
 
 from inventory.broker import Broker
+from inventory.repository import StockRepository
 
 AMQP_URL = "amqp://guest:guest@localhost/"
 DB_URL = "postgresql://inventory:inventory@localhost:5432/inventory"
-QUEUE_NAME = "reserve_stock"
 REDIS_URL = "redis://localhost:6379"
-
-
-class StockRepository:
-    def __init__(self, pool: asyncpg.Pool) -> None:
-        self.pool = pool
-
-    async def reserve(self, sku: str, qty: int) -> bool:
-        async with self.pool.acquire() as connection:
-            result = await connection.execute(
-                "UPDATE stock SET quantity = quantity - $1 WHERE sku = $2 AND quantity >= $1",
-                qty,
-                sku,
-            )
-            return bool(result == "UPDATE 1")
-
-    async def release(self, sku: str, qty: int) -> None:
-        async with self.pool.acquire() as connection:
-            await connection.execute(
-                "UPDATE stock SET quantity = quantity + $1 WHERE sku = $2",
-                qty,
-                sku,
-            )
 
 
 async def handle(repo: StockRepository, broker: Broker, envelope: Envelope) -> None:
@@ -60,7 +38,7 @@ async def main() -> None:
     async with connection:
         channel = await connection.channel()
         broker = Broker(channel)
-        queue = await channel.declare_queue(QUEUE_NAME, durable=True)
+        queue = await channel.declare_queue(constants.RESERVE_STOCK_QUEUE, durable=True)
         async with queue.iterator() as messages:
             async for message in messages:
                 async with message.process():

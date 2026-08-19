@@ -1,9 +1,5 @@
 import aio_pika
-from eventing import Envelope
-
-RESERVE_STOCK_QUEUE = "reserve_stock"
-CHARGE_PAYMENT_QUEUE = "charge_payment"
-NOTIFICATION_QUEUE = "notifications"
+from eventing import Envelope, constants
 
 
 class Broker:
@@ -17,7 +13,7 @@ class Broker:
         )
         await self.channel.default_exchange.publish(
             aio_pika.Message(body=envelope.to_bytes(), message_id=envelope.message_id),
-            routing_key=RESERVE_STOCK_QUEUE,
+            routing_key=constants.RESERVE_STOCK_QUEUE,
         )
 
     async def publish_charge_payment(self, order_id: str, sku: str, qty: int) -> None:
@@ -27,7 +23,7 @@ class Broker:
         )
         await self.channel.default_exchange.publish(
             aio_pika.Message(body=envelope.to_bytes(), message_id=envelope.message_id),
-            routing_key=CHARGE_PAYMENT_QUEUE,
+            routing_key=constants.CHARGE_PAYMENT_QUEUE,
         )
 
     async def publish_release_stock(self, order_id: str, sku: str, qty: int) -> None:
@@ -37,7 +33,7 @@ class Broker:
         )
         await self.channel.default_exchange.publish(
             aio_pika.Message(body=envelope.to_bytes(), message_id=envelope.message_id),
-            routing_key=RESERVE_STOCK_QUEUE,
+            routing_key=constants.RESERVE_STOCK_QUEUE,
         )
 
     async def publish_notification(
@@ -49,5 +45,5 @@ class Broker:
         )
         await self.channel.default_exchange.publish(
             aio_pika.Message(body=envelope.to_bytes(), message_id=envelope.message_id),
-            routing_key=NOTIFICATION_QUEUE,
+            routing_key=constants.NOTIFICATIONS_QUEUE,
         )

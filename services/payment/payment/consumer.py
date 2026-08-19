@@ -2,7 +2,7 @@ import asyncio
 
 import aio_pika
 import asyncpg
-from eventing import Envelope
+from eventing import Envelope, constants
 from eventing.idempotency import Idempotency
 from redis.asyncio import Redis
 
@@ -11,7 +11,6 @@ from payment.repository import PaymentRepository
 
 AMQP_URL = "amqp://guest:guest@localhost/"
 DB_URL = "postgresql://payment:payment@localhost:5433/payment"
-QUEUE_NAME = "charge_payment"
 REDIS_URL = "redis://localhost:6379"
 
 
@@ -37,7 +36,7 @@ async def main() -> None:
     async with connection:
         channel = await connection.channel()
         broker = Broker(channel)
-        queue = await channel.declare_queue(QUEUE_NAME, durable=True)
+        queue = await channel.declare_queue(constants.CHARGE_PAYMENT_QUEUE, durable=True)
         async with queue.iterator() as messages:
             async for message in messages:
                 async with message.process():

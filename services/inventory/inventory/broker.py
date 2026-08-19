@@ -1,5 +1,5 @@
 import aio_pika
-from eventing import Envelope
+from eventing import Envelope, constants
 
 
 class Broker:
@@ -15,5 +15,5 @@ class Broker:
         # 2. publish it to the "stock_replies" queue via self.channel
         await self.channel.default_exchange.publish(
             aio_pika.Message(body=envelope.to_bytes(), message_id=envelope.message_id),
-            routing_key="order_replies",
+            routing_key=constants.ORDER_REPLIES_QUEUE,
         )

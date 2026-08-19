@@ -9,10 +9,9 @@ import asyncio
 import sys
 
 import aio_pika
-from eventing import Envelope
+from eventing import Envelope, constants
 
 AMQP_URL = "amqp://guest:guest@localhost/"
-QUEUE_NAME = "charge_payment"
 
 
 async def main() -> None:
@@ -20,14 +19,14 @@ async def main() -> None:
     connection = await aio_pika.connect_robust(AMQP_URL)
     async with connection:
         channel = await connection.channel()
-        await channel.declare_queue(QUEUE_NAME, durable=True)
+        await channel.declare_queue(constants.CHARGE_PAYMENT_QUEUE, durable=True)
         envelope = Envelope(
             type="ChargePayment",
             payload={"order_id": order_id, "sku": "WIDGET-1", "qty": 2},
         )
         await channel.default_exchange.publish(
             aio_pika.Message(body=envelope.to_bytes(), message_id=envelope.message_id),
-            routing_key=QUEUE_NAME,
+            routing_key=constants.ORDER_REPLIES_QUEUE,
         )
         print(f"[test] sent ChargePayment for {order_id}")
 

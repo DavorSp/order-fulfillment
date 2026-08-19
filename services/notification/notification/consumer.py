@@ -1,10 +1,9 @@
 import asyncio
 
 import aio_pika
-from eventing import Envelope
+from eventing import Envelope, constants
 
 AMQP_URL = "amqp://guest:guest@localhost/"
-QUEUE_NAME = "notifications"
 
 
 async def handle(envelope: Envelope) -> None:
@@ -19,7 +18,7 @@ async def main() -> None:
     connection = await aio_pika.connect_robust(AMQP_URL)
     async with connection:
         channel = await connection.channel()
-        queue = await channel.declare_queue(QUEUE_NAME, durable=True)
+        queue = await channel.declare_queue(constants.NOTIFICATIONS_QUEUE, durable=True)
         async with queue.iterator() as messages:
             async for message in messages:
                 async with message.process():

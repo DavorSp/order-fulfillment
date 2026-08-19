@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Launches the three services as SEPARATE processes with combined, labeled output.
+# Launches all four services as SEPARATE processes with combined, labeled output.
 # They remain independent processes (real microservices) — just displayed together.
-# Usage: ./run.sh [order_id]   (defaults to order-123; use order-fail to test failure)
+# Usage: ./testrun.sh [order_id]   (defaults to order-123; use order-fail to test failure)
 
 set -euo pipefail
 
@@ -13,7 +13,6 @@ $COMPOSE down -v >/dev/null 2>&1
 $COMPOSE up -d >/dev/null 2>&1
 
 echo "==> Waiting for services to be healthy..."
-# crude but effective: wait until all report healthy
 for i in {1..30}; do
     if $COMPOSE ps | grep -q "unhealthy\|starting"; then
         sleep 2
@@ -31,14 +30,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "==> Starting Inventory, Payment, Order (order_id=$ORDER_ID)..."
+echo "==> Starting Inventory, Payment, Notification, Order (order_id=$ORDER_ID)..."
 echo ""
 
 # Each service runs as its own process; sed prefixes its output so you can tell them apart.
-uv run python -u -m inventory.consumer 2>&1 | sed 's/^/[INVENTORY] /' &
-uv run python -u -m payment.consumer   2>&1 | sed 's/^/[PAYMENT]   /' &
+uv run python -u -m inventory.consumer    2>&1 | sed 's/^/[INVENTORY] /' &
+uv run python -u -m payment.consumer      2>&1 | sed 's/^/[PAYMENT]    /' &
+uv run python -u -m notification.consumer 2>&1 | sed 's/^/[NOTIFY]     /' &
 sleep 2
-uv run python -u -m order.main "$ORDER_ID" 2>&1 | sed 's/^/[ORDER]     /' &
+uv run python -u -m order.main "$ORDER_ID" 2>&1 | sed 's/^/[ORDER]      /' &
 
 # wait for all background jobs (keeps the script alive; Ctrl+C triggers cleanup)
 wait

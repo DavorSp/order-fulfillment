@@ -11,7 +11,7 @@ import sys
 import aio_pika
 from eventing import Envelope, constants
 
-AMQP_URL = "amqp://guest:guest@localhost/"
+from payment.config import AMQP_URL
 
 
 async def main() -> None:

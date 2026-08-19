@@ -5,8 +5,8 @@ import aio_pika
 from eventing import Envelope, constants
 
 from order.broker import Broker
+from order.config import AMQP_URL
 
-AMQP_URL = "amqp://guest:guest@localhost/"
 order_id = sys.argv[1] if len(sys.argv) > 1 else "order-123"
 
 

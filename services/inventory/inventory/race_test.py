@@ -9,7 +9,7 @@ import asyncio
 
 import asyncpg
 
-DB_URL = "postgresql://inventory:inventory@localhost:5432/inventory"
+from inventory.config import DB_URL
 
 
 async def naive_reserve(pool: asyncpg.Pool, sku: str, qty: int, worker: int) -> None:

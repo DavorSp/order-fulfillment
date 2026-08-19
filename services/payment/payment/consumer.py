@@ -7,11 +7,8 @@ from eventing.idempotency import Idempotency
 from redis.asyncio import Redis
 
 from payment.broker import Broker
+from payment.config import AMQP_URL, DB_URL, REDIS_URL
 from payment.repository import PaymentRepository
-
-AMQP_URL = "amqp://guest:guest@localhost/"
-DB_URL = "postgresql://payment:payment@localhost:5433/payment"
-REDIS_URL = "redis://localhost:6379"
 
 
 async def handle(repo: PaymentRepository, broker: Broker, envelope: Envelope) -> None:

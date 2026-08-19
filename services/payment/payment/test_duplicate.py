@@ -7,7 +7,8 @@ import asyncio
 import aio_pika
 from eventing import Envelope
 
-AMQP_URL = "amqp://guest:guest@localhost/"
+from payment.config import AMQP_URL
+
 QUEUE_NAME = "charge_payment"
 
 

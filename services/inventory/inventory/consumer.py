@@ -6,11 +6,8 @@ from eventing import Envelope, Idempotency, constants
 from redis.asyncio import Redis
 
 from inventory.broker import Broker
+from inventory.config import AMQP_URL, DB_URL, REDIS_URL
 from inventory.repository import StockRepository
-
-AMQP_URL = "amqp://guest:guest@localhost/"
-DB_URL = "postgresql://inventory:inventory@localhost:5432/inventory"
-REDIS_URL = "redis://localhost:6379"
 
 
 async def handle(repo: StockRepository, broker: Broker, envelope: Envelope) -> None:

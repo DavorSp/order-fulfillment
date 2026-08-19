@@ -3,7 +3,7 @@ import asyncio
 import aio_pika
 from eventing import Envelope, constants
 
-AMQP_URL = "amqp://guest:guest@localhost/"
+from notification.config import AMQP_URL
 
 
 async def handle(envelope: Envelope) -> None:

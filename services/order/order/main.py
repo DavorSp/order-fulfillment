@@ -1,16 +1,30 @@
 import asyncio
-import sys
+from collections.abc import Awaitable, Callable
 
 import aio_pika
-from eventing import Envelope, constants
+import asyncpg
+from eventing import Envelope, Idempotency, constants
+from redis.asyncio import Redis
 
 from order.broker import Broker
-from order.config import AMQP_URL
+from order.config import AMQP_URL, DB_URL, REDIS_URL
+from order.repository import OrderRepository
 
-order_id = sys.argv[1] if len(sys.argv) > 1 else "order-123"
+
+async def handle_create_order(repo: OrderRepository, broker: Broker, envelope: Envelope) -> None:
+    order_id = envelope.payload["order_id"]
+    sku = envelope.payload["sku"]
+    qty = envelope.payload["qty"]
+
+    # 1. persist the order as 'pending'
+    await repo.create_order(order_id, sku, qty)
+    # 2. print something useful
+    print(f"Order {order_id}: created with status 'pending'")
+    # 3. publish ReserveStock
+    await broker.publish_reserve_stock(order_id, sku, qty)
 
 
-async def handle_reply(broker: Broker, envelope: Envelope) -> None:
+async def handle_reply(repo: OrderRepository, broker: Broker, envelope: Envelope) -> None:
     reply_type = envelope.type
     order_id = envelope.payload["order_id"]
     sku = envelope.payload["sku"]
@@ -37,20 +51,55 @@ async def handle_reply(broker: Broker, envelope: Envelope) -> None:
         print(f"Order {order_id}: unknown reply type {reply_type}")
 
 
+async def consume(
+    channel: aio_pika.abc.AbstractChannel,
+    queue_name: str,
+    handler: Callable[[OrderRepository, Broker, Envelope], Awaitable[None]],
+    repo: OrderRepository,
+    broker: Broker,
+    idempotency: Idempotency,
+) -> None:
+    queue = await channel.declare_queue(queue_name, durable=True)
+    async with queue.iterator() as messages:
+        async for message in messages:
+            async with message.process():
+                envelope = Envelope.from_bytes(message.body)
+                if not await idempotency.is_new(envelope.message_id):
+                    print(f"Skipping duplicate {envelope.message_id}")
+                    continue
+                await handler(repo, broker, envelope)
+
+
 async def main() -> None:
+    redis = Redis.from_url(REDIS_URL)
+    idempotency = Idempotency(redis)
+    pool = await asyncpg.create_pool(dsn=DB_URL)
+    repo = OrderRepository(pool)
+
     connection = await aio_pika.connect_robust(AMQP_URL)
     async with connection:
-        channel = await connection.channel()
-        broker = Broker(channel)
-        queue = await channel.declare_queue(constants.ORDER_REPLIES_QUEUE, durable=True)
+        create_channel = await connection.channel()
+        reply_channel = await connection.channel()
+        broker = Broker(create_channel)
 
-        await broker.publish_reserve_stock(order_id, "WIDGET-1", 2)
-
-        async with queue.iterator() as messages:
-            async for message in messages:
-                async with message.process():
-                    envelope = Envelope.from_bytes(message.body)
-                    await handle_reply(broker, envelope)
+        await asyncio.gather(
+            consume(
+                create_channel,
+                constants.CREATE_ORDER_QUEUE,
+                handle_create_order,
+                repo,
+                broker,
+                idempotency,
+            ),
+            consume(
+                reply_channel,
+                constants.ORDER_REPLIES_QUEUE,
+                handle_reply,
+                repo,
+                broker,
+                idempotency,
+            ),
+        )
 
 
 if __name__ == "__main__":

@@ -30,15 +30,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "==> Starting Inventory, Payment, Notification, Order (order_id=$ORDER_ID)..."
+echo "==> Starting Inventory, Payment, Notification, Order..."
 echo ""
 
-# Each service runs as its own process; sed prefixes its output so you can tell them apart.
 uv run python -u -m inventory.consumer    2>&1 | sed 's/^/[INVENTORY] /' &
 uv run python -u -m payment.consumer      2>&1 | sed 's/^/[PAYMENT]    /' &
 uv run python -u -m notification.consumer 2>&1 | sed 's/^/[NOTIFY]     /' &
-sleep 2
-uv run python -u -m order.main "$ORDER_ID" 2>&1 | sed 's/^/[ORDER]      /' &
+uv run python -u -m order.main            2>&1 | sed 's/^/[ORDER]      /' &
 
-# wait for all background jobs (keeps the script alive; Ctrl+C triggers cleanup)
+sleep 3
+echo "==> Publishing CreateOrder (order_id=$ORDER_ID)..."
+uv run python -u scripts/create_order.py "$ORDER_ID" 2>&1 | sed 's/^/[CLIENT]     /'
+
 wait
